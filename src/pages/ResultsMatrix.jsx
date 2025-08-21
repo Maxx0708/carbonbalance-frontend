@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const ResultsMatrix = () => {
@@ -40,22 +40,6 @@ const ResultsMatrix = () => {
     return '';
   };
 
-  const getCellStyle = (row, col) => {
-    const content = getCellContent(row, col);
-    return {
-      width: '40px',
-      height: '40px',
-      border: '1px solid rgba(255, 255, 255, 0.2)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '14px',
-      fontWeight: 'bold',
-      backgroundColor: content === '—' ? 'rgba(255, 255, 255, 0.1)' : content === '✓' ? 'rgba(76, 175, 80, 0.2)' : 'transparent',
-      color: content === '✓' ? '#4CAF50' : '#ffffff',
-      fontFamily: "'Arquitecta', sans-serif"
-    };
-  };
 
   return (
     <div style={{
