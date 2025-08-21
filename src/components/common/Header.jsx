@@ -94,7 +94,7 @@ const Header = () => {
             home
           </Link>
           <a 
-            href="#" 
+            href="/services" 
             style={{ 
               color: '#ffffff', // White text on grey background
               textDecoration: 'none',
@@ -109,7 +109,7 @@ const Header = () => {
             services
           </a>
           <a 
-            href="#" 
+            href="/about" 
             style={{ 
               color: '#ffffff', // White text on grey background
               textDecoration: 'none',
