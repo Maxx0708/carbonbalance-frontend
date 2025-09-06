@@ -17,6 +17,8 @@ const AdminCreateUser = () => {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -51,17 +53,22 @@ const AdminCreateUser = () => {
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
+    const email = formData.email.trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
     setSaving(true);
     setError("");
 
     try {
       const email = formData.email.trim().toLowerCase();
-           const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i; // requires a dot after @
-            if (!EMAIL_RE.test(email)) {
-               setError("Please enter a valid email address (e.g., name@example.com).");
-               setSaving(false);
-               return;
-             }
+      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i; // requires a dot after @
+      if (!EMAIL_RE.test(email)) {
+        setError("Please enter a valid email address (e.g., name@example.com).");
+        setSaving(false);
+        return;
+      }
 
       await api.createUser({
         name: formData.name.trim(),
@@ -325,13 +332,15 @@ const AdminCreateUser = () => {
                     onChange={handleInputChange}
                     placeholder="abc@email.com"
                     style={inputStyle}
-                    onFocus={(e) => {
-                      e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.05)';
-                    }}
-                    required
+                    pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$"
+                    title="Use a valid email like name@example.com"
+                  onFocus={(e) => {
+                    e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.05)';
+                  }}
+                  required
                   />
                 </div>
               </div>

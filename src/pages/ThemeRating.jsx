@@ -7,36 +7,23 @@ const ThemeRating = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Get projectId (preferred from route state, else from localStorage)
-  const params = new URLSearchParams(location.search);
-  const qsProjectId = params.get("project_id");
-
+  // Prefer state from router; fall back to localStorage
   const projectId =
     location.state?.projectId ||
-    qsProjectId ||
     window.localStorage.getItem("currentProjectId");
-
-  useEffect(() => {
-    if (projectId) window.localStorage.setItem("currentProjectId", projectId);
-  }, [projectId]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // [{ id, name, raw_weight, normalized_weight }]
+  // [{ id, name, description }]
   const [themes, setThemes] = useState([]);
-
   // id -> slider value (0..100 by default)
   const [sliders, setSliders] = useState({});
 
   const isMobile = useMemo(() => window.innerWidth <= 768, []);
+  const colorForIndex = (idx) => (idx % 2 === 0 ? "rgb(50, 195, 226)" : "#FF7F00");
 
-  // Alternate brand colors (Blue / Orange …)
-  const colorForIndex = (idx) =>
-    idx % 2 === 0 ? "rgb(50, 195, 226)" : "#FF7F00";
-
-  // Load themes + existing weights
   useEffect(() => {
     let cancelled = false;
 
@@ -46,24 +33,21 @@ const ThemeRating = () => {
         setLoading(true);
 
         // 1) list themes
-        const themeList = await api.listThemes();
-
-        // 2) fetch existing theme-scores (if we have a projectId)
+        const themeList = await api.listThemes(); // returns an array
+        // 2) fetch existing weights if we have a project
         let existing = {};
         if (projectId) {
-          const sResp = await api.getProjectThemeScores(projectId); // { project_id, themes: [...] }
-          // sResp.themes: [{ id, name, raw_weight, normalized_weight }]
+          const sResp = await api.getProjectThemeScores(projectId);
+          // sResp.themes: [{ id, name, weight_raw, weight_norm }]
           for (const row of sResp?.themes ?? []) {
             existing[row.id] =
-              row.raw_weight != null ? Number(row.raw_weight) : null;
+              row.weight_raw != null ? Math.round(Number(row.weight_raw)) : null;
           }
         }
 
-        // Prepare slider defaults (use stored raw_weight or 50)
         const sliderInit = {};
         themeList.forEach((t) => {
-          const preset =
-            existing[t.id] != null ? Math.round(existing[t.id]) : 50;
+          const preset = existing[t.id] != null ? existing[t.id] : 50;
           sliderInit[t.id] = preset;
         });
 
@@ -72,9 +56,7 @@ const ThemeRating = () => {
           setSliders(sliderInit);
         }
       } catch (e) {
-        if (!cancelled) {
-          setError("Failed to load themes. Please try again.");
-        }
+        if (!cancelled) setError("Failed to load themes. Please try again.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -95,18 +77,16 @@ const ThemeRating = () => {
     setError("");
 
     if (!projectId) {
-      setError(
-        "No project selected. Please create or open a project before saving theme ratings."
-      );
+      setError("No project selected. Please create or open a project first.");
       return;
     }
 
     try {
       setSaving(true);
-      // Backend accepts { weights: { "<theme_id>": number } } and normalizes
+      // Backend accepts { weights: { "<theme_id>": number } }
       await api.saveProjectThemes(projectId, sliders);
       navigate("/intervention-selection", { state: { projectId } });
-    } catch (e) {
+    } catch {
       setError("Failed to save theme ratings. Please try again.");
     } finally {
       setSaving(false);
@@ -126,7 +106,6 @@ const ThemeRating = () => {
         position: "relative",
       }}
     >
-      {/* Subtle overlay */}
       <div
         style={{
           position: "absolute",
@@ -136,7 +115,6 @@ const ThemeRating = () => {
           zIndex: 0,
         }}
       />
-
       <main
         style={{
           flex: 1,
@@ -162,12 +140,7 @@ const ThemeRating = () => {
             margin: "0 auto",
           }}
         >
-          <div
-            style={{
-              marginBottom: isMobile ? "20px" : "24px",
-              textAlign: "center",
-            }}
-          >
+          <div style={{ marginBottom: isMobile ? "20px" : "24px", textAlign: "center" }}>
             <h2
               style={{
                 fontSize: isMobile ? "22px" : "26px",
@@ -181,13 +154,7 @@ const ThemeRating = () => {
               Sustainability Themes
             </h2>
             {projectId && (
-              <div
-                style={{
-                  marginTop: 6,
-                  color: "rgba(255,255,255,0.8)",
-                  fontSize: 12,
-                }}
-              >
+              <div style={{ marginTop: 6, color: "rgba(255,255,255,0.8)", fontSize: 12 }}>
                 Project #{projectId}
               </div>
             )}
@@ -214,12 +181,9 @@ const ThemeRating = () => {
               Loading themes…
             </div>
           ) : themes.length === 0 ? (
-            <div style={{ color: "#fff", textAlign: "center", padding: 24 }}>
-              No themes found.
-            </div>
+            <div style={{ color: "#fff", textAlign: "center", padding: 24 }}>No themes found.</div>
           ) : (
             <form onSubmit={handleSubmit}>
-              {/* Table headers */}
               <div
                 style={{
                   display: "grid",
@@ -257,7 +221,6 @@ const ThemeRating = () => {
                 )}
               </div>
 
-              {/* Theme sliders */}
               <div style={{ marginBottom: "32px" }}>
                 {themes.map((t, i) => {
                   const color = colorForIndex(i);
@@ -342,9 +305,7 @@ const ThemeRating = () => {
                             min="0"
                             max="100"
                             value={val}
-                            onChange={(e) =>
-                              handleSliderChange(t.id, e.target.value)
-                            }
+                            onChange={(e) => handleSliderChange(t.id, e.target.value)}
                             style={{
                               position: "absolute",
                               top: "-4px",

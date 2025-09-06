@@ -70,7 +70,10 @@ const CreateProject = () => {
       await api.sendBuildingMetrics(projectId, numeric);
 
       // 3) Navigate forward (keep your chosen destination)
-      navigate(`/theme-rating?project_id=${projectId}`);
+      // after you get projectId
+      localStorage.setItem("currentProjectId", String(projectId)); // optional fallback
+      navigate("/theme-rating", { state: { projectId } });         // preferred route state
+
       // or: navigate('/interventions', { state: { projectId } });
 
     } catch (err) {
