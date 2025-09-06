@@ -55,9 +55,17 @@ const AdminCreateUser = () => {
     setError("");
 
     try {
+      const email = formData.email.trim().toLowerCase();
+           const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i; // requires a dot after @
+            if (!EMAIL_RE.test(email)) {
+               setError("Please enter a valid email address (e.g., name@example.com).");
+               setSaving(false);
+               return;
+             }
+
       await api.createUser({
         name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
+        email,
         password: formData.password,
         role: formData.role,                   // e.g. "Admin"
         default_access_level: formData.accessLevel, // "view" | "edit"
