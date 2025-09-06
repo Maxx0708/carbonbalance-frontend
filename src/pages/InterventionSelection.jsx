@@ -1,9 +1,35 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { api } from '../api'; // adjust path if your api.js lives elsewhere
+
+const API_NAME_TO_KEY = {
+  "Install solar panels": "installSolarPanels",
+  "Upgrade to LED": "upgradeToLED",
+  "Improve insulation": "improveInsulation",
+  "Low flow fixture": "lowFlowFixture",
+  "Rain water harvesting": "rainwaterHarvesting",
+  "Provide bicycle racks and EV charging stations": "bicycleRacksEV",
+  "Install smart leak detection systems": "smartLeakDetection",
+  "Indoor Environment - By adding curtains": "indoorEnvironmentCurtains",
+  "Indoor Environment - Maximize natural lighting and ventilation": "indoorEnvironmentLighting",
+};
 
 const InterventionSelection = () => {
   const navigate = useNavigate();
-  
+  const { state, search } = useLocation();
+  const params = new URLSearchParams(search);
+  const qsProjectId = params.get("project_id");
+
+  const projectId =
+    state?.projectId ||
+    qsProjectId ||
+    window.localStorage.getItem("currentProjectId");
+
+  useEffect(() => {
+    if (projectId) window.localStorage.setItem("currentProjectId", projectId);
+  }, [projectId]);
+
+
   const [selectedInterventions, setSelectedInterventions] = useState({
     installSolarPanels: true, // Pre-selected as shown in screenshot
     upgradeToLED: false,
@@ -19,6 +45,28 @@ const InterventionSelection = () => {
   const [themeToggle, setThemeToggle] = useState(true);
   const isMobile = window.innerWidth <= 768;
 
+  // When a projectId is provided, fetch recommendations and preselect them
+  useEffect(() => {
+    if (!projectId) return;
+    (async () => {
+      try {
+        const recs = await api.getRecommendations(projectId);
+        if (Array.isArray(recs)) {
+          setSelectedInterventions(prev => {
+            const next = { ...prev };
+            for (const r of recs) {
+              const k = API_NAME_TO_KEY[r?.name?.trim?.()] || null;
+              if (k) next[k] = true;
+            }
+            return next;
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to load recommendations:", e);
+      }
+    })();
+  }, [projectId]);
+
   const handleInterventionChange = (interventionName) => {
     setSelectedInterventions(prev => ({
       ...prev,
@@ -31,9 +79,9 @@ const InterventionSelection = () => {
     const selected = Object.entries(selectedInterventions)
       .filter(([key, value]) => value)
       .map(([key]) => key);
-    
+
     console.log('Selected interventions:', selected);
-    navigate('/results');
+    navigate('/results', { state: { projectId, selectedInterventions: selected } });
   };
 
   // Intervention data matching the screenshot
@@ -74,6 +122,8 @@ const InterventionSelection = () => {
     }
   ];
 
+
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -85,7 +135,7 @@ const InterventionSelection = () => {
       flexDirection: 'column',
       position: 'relative'
     }}>
-      
+
       {/* Subtle overlay for better form readability */}
       <div style={{
         position: 'absolute',
@@ -96,7 +146,7 @@ const InterventionSelection = () => {
         background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.05) 50%, rgba(255, 255, 255, 0.05) 100%)',
         zIndex: 0
       }} />
-      
+
       {/* Main Content */}
       <main style={{
         flex: 1,
@@ -108,7 +158,7 @@ const InterventionSelection = () => {
         zIndex: 1,
         paddingTop: isMobile ? '90px' : '120px' // Account for header
       }}>
-        
+
         {/* Main Content Card - Compact to fit on one page */}
         <div style={{
           width: isMobile ? '100%' : '700px',
@@ -121,15 +171,15 @@ const InterventionSelection = () => {
           border: '1px solid rgba(255, 255, 255, 0.2)',
           margin: '0 auto'
         }}>
-          
+
           {/* Header */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: isMobile ? '20px' : '24px'
           }}>
-            <h2 style={{ 
+            <h2 style={{
               fontSize: isMobile ? '22px' : '26px',
               fontFamily: "'Arquitecta', sans-serif",
               fontWeight: '900',
@@ -139,7 +189,7 @@ const InterventionSelection = () => {
             }}>
               Sustainability Intervention
             </h2>
-            
+
             {/* Toggle Switch and Help Icon */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               {/* Theme Toggle Switch */}
@@ -169,7 +219,7 @@ const InterventionSelection = () => {
                   }} />
                 </div>
               </div>
-              
+
               {/* Help Icon */}
               <div style={{
                 display: 'flex',
@@ -223,19 +273,19 @@ const InterventionSelection = () => {
             {/* Interventions List */}
             <div style={{ marginBottom: '32px' }}>
               {interventionData.map((themeGroup, themeIndex) => (
-                <div key={themeIndex} style={{ 
+                <div key={themeIndex} style={{
                   marginBottom: '24px',
                   padding: '16px',
                   backgroundColor: 'rgba(255, 255, 255, 0.08)',
                   borderRadius: '8px',
                   transition: 'all 0.3s ease'
                 }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.12)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
-                }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.12)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                  }}
                 >
                   <div style={{
                     display: 'grid',
@@ -254,65 +304,69 @@ const InterventionSelection = () => {
                     }}>
                       {themeGroup.theme}
                     </div>
-                    
+
                     {/* Interventions Column */}
                     <div>
-                      {themeGroup.interventions.map((intervention, index) => (
-                        <div key={intervention.key} style={{
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '12px',
-                          marginBottom: index < themeGroup.interventions.length - 1 ? '12px' : '0',
-                          padding: '6px 0'
-                        }}>
-                          {/* Custom Checkbox */}
-                          <div
-                            onClick={() => handleInterventionChange(intervention.key)}
-                            style={{
-                              width: '16px',
-                              height: '16px',
-                              border: '2px solid rgb(50, 195, 226)',
-                              borderRadius: '3px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: 'pointer',
-                              backgroundColor: selectedInterventions[intervention.key] || intervention.checked ? 'rgb(50, 195, 226)' : 'transparent',
-                              transition: 'all 0.2s ease',
-                              flexShrink: 0,
-                              marginTop: '2px'
-                            }}
-                          >
-                            {(selectedInterventions[intervention.key] || intervention.checked) && (
-                              <span style={{ 
-                                color: 'white', 
-                                fontSize: '10px', 
-                                fontWeight: 'bold',
-                                fontFamily: "'Arquitecta', sans-serif"
-                              }}>
-                                ✓
-                              </span>
-                            )}
+                      {themeGroup.interventions.map((intervention, index) => {
+                        const isChecked = (selectedInterventions[intervention.key] ?? intervention.checked);
+
+                        return (
+                          <div key={intervention.key} style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '12px',
+                            marginBottom: index < themeGroup.interventions.length - 1 ? '12px' : '0',
+                            padding: '6px 0'
+                          }}>
+                            {/* Custom Checkbox */}
+                            <div
+                              onClick={() => handleInterventionChange(intervention.key)}
+                              style={{
+                                width: '16px',
+                                height: '16px',
+                                border: '2px solid rgb(50, 195, 226)',
+                                borderRadius: '3px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                backgroundColor: isChecked ? 'rgb(50, 195, 226)' : 'transparent',
+                                transition: 'all 0.2s ease',
+                                flexShrink: 0,
+                                marginTop: '2px'
+                              }}
+                            >
+                              {isChecked && (
+                                <span style={{
+                                  color: 'white',
+                                  fontSize: '10px',
+                                  fontWeight: 'bold',
+                                  fontFamily: "'Arquitecta', sans-serif"
+                                }}>
+                                  ✓
+                                </span>
+                              )}
+                            </div>
+
+                            <label
+                              onClick={() => handleInterventionChange(intervention.key)}
+                              style={{
+                                fontSize: isMobile ? '13px' : '14px',
+                                fontFamily: "'Arquitecta', sans-serif",
+                                fontWeight: '300',
+                                color: '#ffffff',
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                                lineHeight: '1.4',
+                                flex: 1,
+                                textShadow: '0 1px 3px rgba(0, 0, 0, 0.5)'
+                              }}
+                            >
+                              {intervention.label}
+                            </label>
                           </div>
-                          
-                          <label 
-                            onClick={() => handleInterventionChange(intervention.key)}
-                            style={{
-                              fontSize: isMobile ? '13px' : '14px',
-                              fontFamily: "'Arquitecta', sans-serif",
-                              fontWeight: '300',
-                              color: '#ffffff',
-                              cursor: 'pointer',
-                              userSelect: 'none',
-                              lineHeight: '1.4',
-                              flex: 1,
-                              textShadow: '0 1px 3px rgba(0, 0, 0, 0.5)'
-                            }}
-                          >
-                            {intervention.label}
-                          </label>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from "../api";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -10,6 +11,8 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [focusedField, setFocusedField] = useState('');
+  const [error, setError] = useState("");
+
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -22,13 +25,16 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
+    setError("");
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log('Login attempt:', formData);
-      navigate('/dashboard');
-    } catch (error) {
-      console.error('Login failed:', error);
+      const { access_token, user } = await api.login(
+        formData.email.trim(),
+        formData.password
+      );
+      localStorage.setItem("user", JSON.stringify(user));
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      setError(err.message || "Login failed");
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +65,7 @@ const Login = () => {
       flexDirection: 'column',
       backgroundColor: '#f0f8ff'
     }}>
-      
+
       {/* Blurred background layer */}
       <div style={{
         position: 'absolute',
@@ -74,7 +80,7 @@ const Login = () => {
         filter: 'blur(3px)',
         zIndex: 0
       }} />
-      
+
       {/* Content container */}
       <div style={{
         position: 'relative',
@@ -83,7 +89,7 @@ const Login = () => {
         display: 'flex',
         flexDirection: 'column'
       }}>
-        
+
         {/* Main Content Area */}
         <div style={{
           flex: 1,
@@ -93,7 +99,7 @@ const Login = () => {
           padding: window.innerWidth <= 768 ? '20px' : '40px 80px',
           position: 'relative'
         }}>
-          
+
           {/* Login Form Container - Responsive */}
           <div style={{
             width: window.innerWidth <= 768 ? '100%' : '400px',
@@ -107,7 +113,7 @@ const Login = () => {
             transform: 'translateY(0)',
             transition: 'all 0.3s ease'
           }}>
-            
+
             {/* Logo and Title */}
             <div style={{ marginBottom: window.innerWidth <= 768 ? '24px' : '32px' }}>
               <div style={{
@@ -127,12 +133,12 @@ const Login = () => {
                   justifyContent: 'center',
                   transition: 'transform 0.3s ease'
                 }}
-                onMouseEnter={(e) => e.target.style.transform = 'rotate(5deg) scale(1.05)'}
-                onMouseLeave={(e) => e.target.style.transform = 'rotate(0deg) scale(1)'}
+                  onMouseEnter={(e) => e.target.style.transform = 'rotate(5deg) scale(1.05)'}
+                  onMouseLeave={(e) => e.target.style.transform = 'rotate(0deg) scale(1)'}
                 >
-                  <span style={{ 
-                    color: 'white', 
-                    fontSize: '20px', 
+                  <span style={{
+                    color: 'white',
+                    fontSize: '20px',
                     fontFamily: "'Arquitecta', sans-serif",
                     fontWeight: '900'
                   }}>C</span>
@@ -150,7 +156,7 @@ const Login = () => {
                   CarbonBalance
                 </h1>
               </div>
-              
+
               <h2 style={{
                 margin: 0,
                 fontSize: window.innerWidth <= 768 ? '16px' : '18px',
@@ -166,6 +172,20 @@ const Login = () => {
 
             {/* Login Form */}
             <form onSubmit={handleSubmit}>
+              {error && (
+                <div style={{
+                  marginBottom: 12,
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  background: 'rgba(255, 80, 80, 0.15)',
+                  border: '1px solid rgba(255, 80, 80, 0.35)',
+                  color: '#fff',
+                  fontFamily: "'Arquitecta', sans-serif",
+                  fontSize: 14
+                }}>
+                  {error}
+                </div>
+              )}
               {/* Email Field */}
               <div style={{ marginBottom: '20px' }}>
                 <div style={{ position: 'relative' }}>

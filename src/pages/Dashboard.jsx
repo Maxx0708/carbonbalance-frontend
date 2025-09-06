@@ -1,8 +1,14 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { api } from '../api'; // make sure this path matches your project
 
 const Dashboard = () => {
   const isMobile = window.innerWidth <= 768;
+  const navigate = useNavigate();
+  // however you store auth; adjust as needed
+  const userObj = JSON.parse(localStorage.getItem('user') || '{}');
+  const userId = userObj?.id ?? userObj?.user_id ?? null;
+
+
 
   return (
     <div style={{
@@ -15,7 +21,7 @@ const Dashboard = () => {
       flexDirection: 'column',
       position: 'relative'
     }}>
-      
+
       {/* Subtle overlay for depth */}
       <div style={{
         position: 'absolute',
@@ -35,7 +41,7 @@ const Dashboard = () => {
         position: 'relative',
         zIndex: 1
       }}>
-        
+
         {/* Hero Text Section */}
         <div style={{
           position: 'absolute',
@@ -59,7 +65,7 @@ const Dashboard = () => {
           }}>
             Where Innovation Meets Sustainability in Construction
           </h1>
-          
+
           <p style={{
             fontSize: isMobile ? '13px' : '16px',
             color: '#ffffff',
@@ -81,7 +87,7 @@ const Dashboard = () => {
           transform: 'translate(-50%, -50%)',
           zIndex: 2
         }}>
-          
+
           {/* Project Canvas Card */}
           <div style={{
             width: isMobile ? '90vw' : '420px',
@@ -96,16 +102,16 @@ const Dashboard = () => {
             overflow: 'hidden',
             transition: 'all 0.4s ease'
           }}
-          onMouseEnter={(e) => {
-            e.target.style.transform = 'translateY(-8px) scale(1.02)';
-            e.target.style.boxShadow = '0 30px 80px rgba(0, 0, 0, 0.2), 0 12px 40px rgba(50, 195, 226, 0.15)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.transform = 'translateY(0) scale(1)';
-            e.target.style.boxShadow = '0 20px 60px rgba(0, 0, 0, 0.15), 0 8px 32px rgba(50, 195, 226, 0.1)';
-          }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-8px) scale(1.02)';
+              e.target.style.boxShadow = '0 30px 80px rgba(0, 0, 0, 0.2), 0 12px 40px rgba(50, 195, 226, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0) scale(1)';
+              e.target.style.boxShadow = '0 20px 60px rgba(0, 0, 0, 0.15), 0 8px 32px rgba(50, 195, 226, 0.1)';
+            }}
           >
-            
+
             {/* Animated background gradient */}
             <div style={{
               position: 'absolute',
@@ -118,7 +124,7 @@ const Dashboard = () => {
               animation: 'rotate 20s linear infinite',
               opacity: 0.3
             }} />
-            
+
             {/* Content */}
             <div style={{ position: 'relative', zIndex: 2 }}>
               {/* Icons Section */}
@@ -140,14 +146,14 @@ const Dashboard = () => {
                   boxShadow: '0 8px 24px rgba(76, 175, 80, 0.3)',
                   transition: 'all 0.3s ease'
                 }}
-                onMouseEnter={(e) => {
-                  e.target.style.transform = 'scale(1.1) rotate(5deg)';
-                  e.target.style.boxShadow = '0 12px 32px rgba(76, 175, 80, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.transform = 'scale(1) rotate(0deg)';
-                  e.target.style.boxShadow = '0 8px 24px rgba(76, 175, 80, 0.3)';
-                }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'scale(1.1) rotate(5deg)';
+                    e.target.style.boxShadow = '0 12px 32px rgba(76, 175, 80, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'scale(1) rotate(0deg)';
+                    e.target.style.boxShadow = '0 8px 24px rgba(76, 175, 80, 0.3)';
+                  }}
                 >
                   <div style={{
                     width: '20px',
@@ -156,7 +162,7 @@ const Dashboard = () => {
                     borderRadius: '3px'
                   }} />
                 </div>
-                
+
                 {/* Blue document icon */}
                 <div style={{
                   width: '32px',
@@ -169,14 +175,14 @@ const Dashboard = () => {
                   boxShadow: '0 8px 24px rgba(50, 195, 226, 0.3)',
                   transition: 'all 0.3s ease'
                 }}
-                onMouseEnter={(e) => {
-                  e.target.style.transform = 'scale(1.1) rotate(-5deg)';
-                  e.target.style.boxShadow = '0 12px 32px rgba(50, 195, 226, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.transform = 'scale(1) rotate(0deg)';
-                  e.target.style.boxShadow = '0 8px 24px rgba(50, 195, 226, 0.3)';
-                }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'scale(1.1) rotate(-5deg)';
+                    e.target.style.boxShadow = '0 12px 32px rgba(50, 195, 226, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'scale(1) rotate(0deg)';
+                    e.target.style.boxShadow = '0 8px 24px rgba(50, 195, 226, 0.3)';
+                  }}
                 >
                   <div style={{
                     width: '16px',
@@ -248,18 +254,18 @@ const Dashboard = () => {
                   filter: 'drop-shadow(0 4px 12px rgba(255, 215, 0, 0.5))',
                   transition: 'all 0.3s ease'
                 }}
-                onMouseEnter={(e) => {
-                  e.target.style.transform = 'scale(1.2) rotate(18deg)';
-                  e.target.style.filter = 'drop-shadow(0 6px 16px rgba(255, 215, 0, 0.7))';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.transform = 'scale(1) rotate(0deg)';
-                  e.target.style.filter = 'drop-shadow(0 4px 12px rgba(255, 215, 0, 0.5))';
-                }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'scale(1.2) rotate(18deg)';
+                    e.target.style.filter = 'drop-shadow(0 6px 16px rgba(255, 215, 0, 0.7))';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'scale(1) rotate(0deg)';
+                    e.target.style.filter = 'drop-shadow(0 4px 12px rgba(255, 215, 0, 0.5))';
+                  }}
                 >
                   ⭐
                 </div>
-                
+
                 <div style={{
                   width: '28px',
                   height: '28px',
@@ -271,14 +277,14 @@ const Dashboard = () => {
                   boxShadow: '0 6px 16px rgba(66, 86, 103, 0.4)',
                   transition: 'all 0.3s ease'
                 }}
-                onMouseEnter={(e) => {
-                  e.target.style.transform = 'scale(1.1)';
-                  e.target.style.boxShadow = '0 8px 20px rgba(66, 86, 103, 0.5)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.transform = 'scale(1)';
-                  e.target.style.boxShadow = '0 6px 16px rgba(66, 86, 103, 0.4)';
-                }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'scale(1.1)';
+                    e.target.style.boxShadow = '0 8px 20px rgba(66, 86, 103, 0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'scale(1)';
+                    e.target.style.boxShadow = '0 6px 16px rgba(66, 86, 103, 0.4)';
+                  }}
                 >
                   <span style={{
                     color: 'white',
@@ -299,7 +305,7 @@ const Dashboard = () => {
               }}>
                 Your Project Canvas
               </h3>
-              
+
               <p style={{
                 fontSize: isMobile ? '15px' : '18px',
                 color: 'rgba(66, 86, 103, 0.7)',
@@ -350,7 +356,7 @@ const Dashboard = () => {
                 >
                   Generate New Project +
                 </Link>
-                
+
                 <button style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.4)',
                   color: 'rgba(66, 86, 103, 0.9)',
@@ -369,17 +375,38 @@ const Dashboard = () => {
                   backdropFilter: 'blur(10px)',
                   boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
                 }}
-                onMouseOver={(e) => {
-                  e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.6)';
-                  e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.15)';
-                }}
-                onMouseOut={(e) => {
-                  e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.4)';
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.1)';
-                }}
-                onClick={() => alert('View Existing Projects feature coming soon!')}
+                  onMouseOver={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.6)';
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.15)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.4)';
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.1)';
+                  }}
+                  onClick={async () => {
+                    try {
+                      if (!userId) {
+                        alert('Please log in first.');
+                        return navigate('/login');
+                      }
+                      const projects = await api.listProjectsByUser(userId);
+                      // stash for later page implementation
+                      localStorage.setItem('lastProjects', JSON.stringify(projects));
+                      console.table(projects);
+                      const names = projects.slice(0, 5).map(p => p.name || `Project #${p.id}`);
+                      alert(
+                        `Found ${projects.length} project(s).\n` +
+                        (names.length ? `Recent:\n• ${names.join('\n• ')}` : 'No recent projects.')
+                      );
+                      // When your list page exists, swap this for:
+                      // navigate('/projects', { state: { userId, projects } });
+                    } catch (e) {
+                      console.warn('Failed to load projects:', e);
+                      alert('Could not load projects. Please try again.');
+                    }
+                  }}
                 >
                   View Existing Project →
                 </button>
@@ -418,17 +445,17 @@ const Dashboard = () => {
                 position: 'relative',
                 overflow: 'hidden'
               }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-5px) translateX(-5px) scale(1.05)';
-                e.target.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.2)';
-                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0) translateX(0) scale(1)';
-                e.target.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.15)';
-                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-              }}>
-                
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-5px) translateX(-5px) scale(1.05)';
+                  e.target.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.2)';
+                  e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0) translateX(0) scale(1)';
+                  e.target.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.15)';
+                  e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                }}>
+
                 {/* Gradient accent */}
                 <div style={{
                   position: 'absolute',
@@ -439,7 +466,7 @@ const Dashboard = () => {
                   background: `linear-gradient(90deg, ${stat.color} 0%, ${stat.color}80 100%)`,
                   borderRadius: '16px 16px 0 0'
                 }} />
-                
+
                 <div style={{
                   fontSize: '36px',
                   fontFamily: "'Arquitecta', sans-serif",

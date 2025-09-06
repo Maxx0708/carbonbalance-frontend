@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from "../api";
 
 const AdminCreateUser = () => {
   const navigate = useNavigate();
-  
+
   const [formData, setFormData] = useState({
     name: '',
     password: '',
@@ -13,6 +14,8 @@ const AdminCreateUser = () => {
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -46,14 +49,31 @@ const AdminCreateUser = () => {
     });
   };
 
-  const handleCreateUser = (e) => {
+  const handleCreateUser = async (e) => {
     e.preventDefault();
-    console.log('Creating user:', formData);
-    alert('User created successfully!');
-    
-    setTimeout(() => {
-      navigate('/login');
-    }, 1000);
+    setSaving(true);
+    setError("");
+
+    try {
+      await api.createUser({
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        role: formData.role,                   // e.g. "Admin"
+        default_access_level: formData.accessLevel, // "view" | "edit"
+      });
+
+      alert("User created successfully!");
+      navigate("/login", { replace: true });
+    } catch (err) {
+      // backend returns {error:"email_exists"} or similar -> surface a friendly message
+      const msg = err?.message === "email_exists"
+        ? "That email is already registered."
+        : err?.message || "Failed to create the user.";
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const isMobile = window.innerWidth <= 768;
@@ -95,7 +115,7 @@ const AdminCreateUser = () => {
       flexDirection: 'column',
       backgroundColor: '#f0f8ff'
     }}>
-      
+
       {/* Blurred background layer */}
       <div style={{
         position: 'absolute',
@@ -110,7 +130,7 @@ const AdminCreateUser = () => {
         filter: 'blur(3px)',
         zIndex: 0
       }} />
-      
+
       {/* Content container */}
       <div style={{
         position: 'relative',
@@ -119,7 +139,7 @@ const AdminCreateUser = () => {
         display: 'flex',
         flexDirection: 'column'
       }}>
-        
+
         {/* Main Content Area - Responsive */}
         <div style={{
           flex: 1,
@@ -129,7 +149,7 @@ const AdminCreateUser = () => {
           padding: window.innerWidth <= 768 ? '20px' : '40px 80px',
           position: 'relative'
         }}>
-          
+
           {/* Admin Form Container - Responsive */}
           <div style={{
             width: isMobile ? '100%' : '480px',
@@ -142,10 +162,10 @@ const AdminCreateUser = () => {
             border: '1px solid rgba(255, 255, 255, 0.2)',
             margin: isMobile ? '0 auto' : '0'
           }}>
-            
+
             {/* Header - Responsive */}
-            <div style={{ 
-              textAlign: 'center', 
+            <div style={{
+              textAlign: 'center',
               marginBottom: isMobile ? '32px' : '32px',
               paddingBottom: '20px',
               borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
@@ -162,9 +182,27 @@ const AdminCreateUser = () => {
               </h2>
             </div>
 
+            {error && (
+              <div
+                role="alert"
+                style={{
+                  marginBottom: '16px',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(255, 99, 71, 0.15)',
+                  border: '1px solid rgba(255, 99, 71, 0.4)',
+                  color: '#fff',
+                  fontFamily: "'Arquitecta', sans-serif",
+                  fontSize: '14px'
+                }}
+              >
+                {error}
+              </div>
+            )}
+
             {/* Form */}
             <form onSubmit={handleCreateUser}>
-              
+
               {/* Name Field */}
               <div style={fieldContainerStyle}>
                 <label style={labelStyle}>Name:</label>
@@ -293,14 +331,14 @@ const AdminCreateUser = () => {
               {/* Role Assignment - Responsive */}
               <div style={fieldContainerStyle}>
                 <label style={labelStyle}>Role Assignment:</label>
-                <div style={{ 
+                <div style={{
                   display: 'grid',
                   gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', // Changed to 2 columns for 4 roles
                   gap: isMobile ? '16px' : '12px',
                   marginTop: '8px'
                 }}>
                   {['Admin', 'Employee', 'Client', 'Consultant'].map((role) => (
-                    <label 
+                    <label
                       key={role}
                       style={{
                         display: 'flex',
@@ -349,14 +387,14 @@ const AdminCreateUser = () => {
               {/* Access Level - CLEAN VERSION WITHOUT EMOJIS */}
               <div style={fieldContainerStyle}>
                 <label style={labelStyle}>Access Level:</label>
-                <div style={{ 
+                <div style={{
                   display: 'flex',
                   gap: isMobile ? '16px' : '20px',
                   marginTop: '8px',
                   justifyContent: 'center'
                 }}>
                   {['view', 'edit'].map((level) => (
-                    <label 
+                    <label
                       key={level}
                       style={{
                         display: 'flex',
@@ -446,6 +484,7 @@ const AdminCreateUser = () => {
                 {/* Create User Button */}
                 <button
                   type="submit"
+                  disabled={saving}
                   style={{
                     backgroundColor: 'rgba(255, 255, 255, 0.2)',
                     color: 'white',
@@ -455,7 +494,8 @@ const AdminCreateUser = () => {
                     fontSize: isMobile ? '16px' : '14px',
                     fontFamily: "'Arquitecta', sans-serif",
                     fontWeight: '500',
-                    cursor: 'pointer',
+                    cursor: saving ? 'not-allowed' : 'pointer',
+                    opacity: saving ? 0.7 : 1,
                     transition: 'all 0.3s ease',
                     letterSpacing: '0.5px',
                     width: isMobile ? '100%' : 'auto',
@@ -463,18 +503,8 @@ const AdminCreateUser = () => {
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                     backdropFilter: 'blur(10px)'
                   }}
-                  onMouseOver={(e) => {
-                    e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-                    e.target.style.transform = 'translateY(-1px)';
-                    e.target.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.15)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                  }}
                 >
-                  Create User
+                  {saving ? 'Creating…' : 'Create User'}
                 </button>
               </div>
             </form>

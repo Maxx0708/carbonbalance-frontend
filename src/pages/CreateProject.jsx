@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../api';
 
 const CreateProject = () => {
   const navigate = useNavigate();
@@ -31,28 +32,50 @@ const CreateProject = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const projectId = 123; 
     try {
-          const res = await fetch(
-            `https://temperature-pickup-surgery-stock.trycloudflare.com/api/projects/${projectId}/metrics`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ metrics: formData }),
-            }
-          );
+      // Build the base project payload
+      const base = {
+        name: (formData.project_name || '').trim(),
+        project_type: formData.project_type || null,
+        location: formData.location || 'Brisbane',
+        building_type: formData.building_type || null,
+      };
 
+      // Collect numeric fields (only include those the user filled)
+      const numericFields = [
+        'levels',
+        'external_wall_area',
+        'footprint_area',
+        'opening_pct',
+        'wall_to_floor_ratio',
+        'footprint_gifa',
+        'gifa_total',
+        'external_openings_area',
+        'avg_height_per_level',
+      ];
+      const numeric = {};
+      for (const f of numericFields) {
+        const v = formData[f];
+        if (v !== '' && v !== null && v !== undefined) {
+          numeric[f] = Number(v);
+        }
+      }
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to save metrics");
+      // 1) Create the project
+      const project = await api.createProject({ ...base, ...numeric });
+      const projectId = project.id;
+      if (!projectId) throw new Error('Project create failed: no id returned');
 
-      console.log("Form submitted successfully:", json);
-      alert(`Updated ${json.updated} scores (dry_run=${json.dry_run})`);
+      // 2) Send metrics (runs scoring pipeline)
+      await api.sendBuildingMetrics(projectId, numeric);
 
-      navigate('/theme-rating');
-    } catch (error) {
-      console.error("Error submitting form:", error);
-      alert(error.message);
+      // 3) Navigate forward (keep your chosen destination)
+      navigate(`/theme-rating?project_id=${projectId}`);
+      // or: navigate('/interventions', { state: { projectId } });
+
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Failed to submit');
     }
   };
 
@@ -109,7 +132,7 @@ const CreateProject = () => {
       flexDirection: 'column',
       position: 'relative'
     }}>
-      
+
       {/* Subtle overlay */}
       <div style={{
         position: 'absolute',
@@ -120,7 +143,7 @@ const CreateProject = () => {
         background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.05) 50%, rgba(255, 255, 255, 0.05) 100%)',
         zIndex: 0
       }} />
-      
+
       <main style={{
         flex: 1,
         display: 'flex',
@@ -131,7 +154,7 @@ const CreateProject = () => {
         zIndex: 1,
         paddingTop: isMobile ? '90px' : '120px'
       }}>
-        
+
         <div style={{
           width: isMobile ? '100%' : '800px',
           maxWidth: '800px',
@@ -143,8 +166,8 @@ const CreateProject = () => {
           border: '1px solid rgba(255, 255, 255, 0.2)',
           margin: '0 auto'
         }}>
-          
-          <h2 style={{ 
+
+          <h2 style={{
             fontSize: isMobile ? '26px' : '30px',
             fontFamily: "'Arquitecta', sans-serif",
             fontWeight: '900',
@@ -155,16 +178,16 @@ const CreateProject = () => {
           }}>
             Create New Project
           </h2>
-          
+
           <form onSubmit={handleSubmit}>
             {/* Basic Info */}
-            <div style={{ 
+            <div style={{
               display: 'grid',
               gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))',
               gap: isMobile ? '14px' : '16px',
               marginBottom: isMobile ? '20px' : '22px'
             }}>
-              
+
               {/* Project Name */}
               <div style={fieldContainerStyle}>
                 <label style={labelStyle}>Project Name*:</label>
@@ -178,7 +201,7 @@ const CreateProject = () => {
                   required
                 />
               </div>
-              
+
               <div style={fieldContainerStyle}>
                 <label style={labelStyle}>Project Type*:</label>
                 <select
@@ -225,12 +248,12 @@ const CreateProject = () => {
             </div>
 
             {/* Metrics */}
-            <div style={{ 
+            <div style={{
               borderTop: '1px solid rgba(50, 195, 226, 0.3)',
               paddingTop: isMobile ? '16px' : '18px',
               marginBottom: '16px'
             }}>
-              <h3 style={{ 
+              <h3 style={{
                 fontSize: isMobile ? '16px' : '18px',
                 fontFamily: "'Arquitecta', sans-serif",
                 fontWeight: '900',
@@ -240,9 +263,9 @@ const CreateProject = () => {
               }}>
                 📊 All Building Metrics
               </h3>
-              
-              <div style={{ 
-                display: 'grid', 
+
+              <div style={{
+                display: 'grid',
                 gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(180px, 1fr))',
                 gap: isMobile ? '12px' : '14px'
               }}>
