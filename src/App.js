@@ -5,6 +5,7 @@ import AdminCreateUser from './pages/AdminCreateUser';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import CreateProject from './pages/CreateProject';
+import ViewExistingProjects from './pages/ViewExistingProject';
 import ThemeRating from './pages/ThemeRating';
 import InterventionSelection from './pages/InterventionSelection';
 import ResultsMatrix from './pages/ResultsMatrix';
@@ -28,6 +29,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/Dashboard" element={<Navigate to="/dashboard" replace />} />
           <Route path="/create-project" element={<CreateProject />} />
+          <Route path="/view-existing" element={<ViewExistingProjects />} />
           <Route path="/theme-rating" element={<ThemeRating />} />
           <Route path="/intervention-selection" element={<InterventionSelection />} />
           <Route path="/results" element={<ResultsMatrix />} />

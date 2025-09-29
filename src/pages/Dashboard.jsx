@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { api } from '../api'; // make sure this path matches your project
+import { api, getUserId } from '../api';
 
 const Dashboard = () => {
   const isMobile = window.innerWidth <= 768;
@@ -385,28 +385,12 @@ const Dashboard = () => {
                     e.target.style.transform = 'translateY(0)';
                     e.target.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.1)';
                   }}
-                  onClick={async () => {
-                    try {
-                      if (!userId) {
-                        alert('Please log in first.');
-                        return navigate('/login');
-                      }
-                      const projects = await api.listProjectsByUser(userId);
-                      // stash for later page implementation
-                      localStorage.setItem('lastProjects', JSON.stringify(projects));
-                      console.table(projects);
-                      const names = projects.slice(0, 5).map(p => p.name || `Project #${p.id}`);
-                      alert(
-                        `Found ${projects.length} project(s).\n` +
-                        (names.length ? `Recent:\n• ${names.join('\n• ')}` : 'No recent projects.')
-                      );
-                      // When your list page exists, swap this for:
-                      // navigate('/projects', { state: { userId, projects } });
-                    } catch (e) {
-                      console.warn('Failed to load projects:', e);
-                      alert('Could not load projects. Please try again.');
-                    }
-                  }}
+                  onClick={() => {
+                    const uid = getUserId();
+                    if (!uid) return navigate('/login');
+                    // go to your list page; adjust the path to match your route/file name
+                    navigate('/view-existing');
+                    }}
                 >
                   View Existing Project →
                 </button>
