@@ -113,8 +113,10 @@ export const api = {
     return request(`/projects/${projectId}/metrics${q}`, { method: "POST", body: { metrics } });
   },
   async getRecommendations(projectId) {
-    const data = await request(`/projects/${projectId}/recommendations`);
-    return data.recommendations;
+    const res = await fetch(`/api/projects/${projectId}/recommendations`);
+    if (!res.ok) throw new Error(`Recommendations failed: ${res.status}`);
+    const data = await res.json();
+    return Array.isArray(data?.recommendations) ? data.recommendations : data;
   },
 };
 
