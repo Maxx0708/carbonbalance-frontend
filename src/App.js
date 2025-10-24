@@ -9,6 +9,8 @@ import ViewExistingProjects from './pages/ViewExistingProject';
 import ThemeRating from './pages/ThemeRating';
 import InterventionSelection from './pages/InterventionSelection';
 import ResultsMatrix from './pages/ResultsMatrix';
+import DataIngestion from "./pages/DataIngestion";   // 🆕 New page import
+
 import './App.css';
 
 function App() {
@@ -16,16 +18,16 @@ function App() {
     <Router>
       <Layout>
         <Routes>
-          {/* Admin page as the first/default route */}
-          <Route path="/admin" element={<AdminCreateUser />} />
-          <Route path="/Admin" element={<Navigate to="/admin" replace />} />
-          
-          {/* Login routes - handle both cases and redirect to lowercase */}
+          {/* 🟢 Login page is now the default / entry route */}
           <Route path="/login" element={<Login />} />
           <Route path="/Login" element={<Navigate to="/login" replace />} />
           <Route path="/LOGIN" element={<Navigate to="/login" replace />} />
-          
-          {/* Other routes */}
+
+          {/* 🟠 Admin route (accessible after login if needed) */}
+          <Route path="/admin" element={<AdminCreateUser />} />
+          <Route path="/Admin" element={<Navigate to="/admin" replace />} />
+
+          {/* 🟣 Main user routes */}
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/Dashboard" element={<Navigate to="/dashboard" replace />} />
           <Route path="/create-project" element={<CreateProject />} />
@@ -33,10 +35,13 @@ function App() {
           <Route path="/theme-rating" element={<ThemeRating />} />
           <Route path="/intervention-selection" element={<InterventionSelection />} />
           <Route path="/results" element={<ResultsMatrix />} />
-          
-          {/* Default route redirects to admin page */}
-          <Route path="/" element={<Navigate to="/admin" replace />} />
-          <Route path="*" element={<Navigate to="/admin" replace />} />
+
+          {/* 🆕 Data Ingestion route */}
+          <Route path="/data-ingestion" element={<DataIngestion />} />
+
+          {/* 🏠 Default route now goes to login instead of admin */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Layout>
     </Router>

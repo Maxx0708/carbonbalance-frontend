@@ -78,7 +78,7 @@ const AdminCreateUser = () => {
         default_access_level: formData.accessLevel, // "view" | "edit"
       });
 
-      alert("User created successfully!");
+      alert("User account created successfully.");
       navigate("/login", { replace: true });
     } catch (err) {
       // backend returns {error:"email_exists"} or similar -> surface a friendly message

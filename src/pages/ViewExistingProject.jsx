@@ -87,7 +87,7 @@ const ViewExistingProjects = () => {
   return (
     <div style={{
       height: '100vh',
-      backgroundImage: `url('${process.env.PUBLIC_URL}/dashboardbg.jpg')`,
+      backgroundImage: `url('${process.env.PUBLIC_URL}/newdashbg.jpg')`,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat',

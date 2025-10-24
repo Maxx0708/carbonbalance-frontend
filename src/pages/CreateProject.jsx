@@ -43,21 +43,21 @@ const CreateProject = () => {
 
       // Collect numeric fields (only include those the user filled)
       const numericFields = [
-        'levels',
-        'external_wall_area',
-        'footprint_area',
-        'opening_pct',
-        'wall_to_floor_ratio',
-        'footprint_gifa',
-        'gifa_total',
-        'external_openings_area',
-        'avg_height_per_level',
+        { name: 'levels', label: 'Number of levels:' },
+        { name: 'external_wall_area', label: 'External wall area:' },
+        { name: 'footprint_area', label: 'Building footprint:' },
+        { name: 'opening_pct', label: 'Opening %:' },
+        { name: 'wall_to_floor_ratio', label: 'Wall-to-floor ratio:' },
+        { name: 'footprint_gifa', label: 'Footprint GIFA:' },
+        { name: 'gifa_total', label: 'GIFA Total:' },
+        { name: 'external_openings_area', label: 'External openings:' },
+        { name: 'avg_height_per_level', label: 'Avg. height per level:' }
       ];
       const numeric = {};
       for (const f of numericFields) {
-        const v = formData[f];
+        const v = formData[f.name];
         if (v !== '' && v !== null && v !== undefined) {
-          numeric[f] = Number(v);
+          numeric[f.name] = Number(v);
         }
       }
 
@@ -70,15 +70,12 @@ const CreateProject = () => {
       await api.sendBuildingMetrics(projectId, numeric);
 
       // 3) Navigate forward (keep your chosen destination)
-      // after you get projectId
       localStorage.setItem("currentProjectId", String(projectId)); // optional fallback
       navigate("/theme-rating", { state: { projectId } });         // preferred route state
 
-      // or: navigate('/interventions', { state: { projectId } });
-
     } catch (err) {
       console.error(err);
-      alert(err.message || 'Failed to submit');
+      alert(err.message || 'Project creation failed. Please review your inputs and try again.');
     }
   };
 
@@ -273,15 +270,15 @@ const CreateProject = () => {
                 gap: isMobile ? '12px' : '14px'
               }}>
                 {[
-                  { name: 'levels', label: 'Number of levels:' },
-                  { name: 'external_wall_area', label: 'External wall area:' },
-                  { name: 'footprint_area', label: 'Building footprint:' },
-                  { name: 'opening_pct', label: 'Opening %:' },
-                  { name: 'wall_to_floor_ratio', label: 'Wall floor ratio:' },
-                  { name: 'footprint_gifa', label: 'Footprint GIFA:' },
-                  { name: 'gifa_total', label: 'GIFA Total:' },
-                  { name: 'external_openings_area', label: 'External openings:' },
-                  { name: 'avg_height_per_level', label: 'Avg. height per level:' }
+                  { name: 'levels', label: 'Number of levels:', placeholder: 'e.g., 8', step: 1 },
+                  { name: 'external_wall_area', label: 'External wall area (m²):', placeholder: 'e.g., 2500', step: '0.01' },
+                  { name: 'footprint_area', label: 'Building footprint (m²):', placeholder: 'e.g., 1200.5', step: '0.01' },
+                  { name: 'opening_pct', label: 'Opening (%):', placeholder: 'e.g., 35', step: '0.1' },
+                  { name: 'wall_to_floor_ratio', label: 'Wall-to-floor ratio:', placeholder: 'e.g., 0.45', step: '0.01' },
+                  { name: 'footprint_gifa', label: 'Footprint GIFA (m²):', placeholder: 'e.g., 1200.5', step: '0.01' },
+                  { name: 'gifa_total', label: 'GIFA Total (m²):', placeholder: 'e.g., 4800', step: '0.01' },
+                  { name: 'external_openings_area', label: 'External openings (m²):', placeholder: 'e.g., 350', step: '0.01' },
+                  { name: 'avg_height_per_level', label: 'Avg. height per level (m):', placeholder: 'e.g., 3.4', step: '0.01' }
                 ].map((field) => (
                   <div key={field.name} style={fieldContainerStyle}>
                     <label style={labelStyle}>{field.label}</label>
@@ -291,8 +288,10 @@ const CreateProject = () => {
                       value={formData[field.name]}
                       onChange={handleInputChange}
                       style={numberInputStyle}
-                      placeholder="0"
+                      placeholder={field.placeholder}
+                      step={field.step}
                       min="0"
+                      inputMode={field.step === 1 ? 'numeric' : 'decimal'}
                     />
                   </div>
                 ))}

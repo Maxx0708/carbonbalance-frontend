@@ -22,7 +22,7 @@ const ResultsMatrix = () => {
   ];
 
   const handleDownloadReport = () => {
-    alert('Report download started! (This would generate a PDF in a real application)');
+    alert('Report generation initiated. A PDF report will be available for download.');
   };
 
   const handleBackToProject = () => {

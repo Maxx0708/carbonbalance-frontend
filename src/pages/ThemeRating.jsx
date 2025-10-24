@@ -32,13 +32,10 @@ const ThemeRating = () => {
         setError("");
         setLoading(true);
 
-        // 1) list themes
-        const themeList = await api.listThemes(); // returns an array
-        // 2) fetch existing weights if we have a project
+        const themeList = await api.listThemes();
         let existing = {};
         if (projectId) {
           const sResp = await api.getProjectThemeScores(projectId);
-          // sResp.themes: [{ id, name, weight_raw, weight_norm }]
           for (const row of sResp?.themes ?? []) {
             existing[row.id] =
               row.weight_raw != null ? Math.round(Number(row.weight_raw)) : null;
@@ -47,7 +44,7 @@ const ThemeRating = () => {
 
         const sliderInit = {};
         themeList.forEach((t) => {
-          const preset = existing[t.id] != null ? existing[t.id] : 50;
+          const preset = existing[t.id] != null ? existing[t.id] : 0;
           sliderInit[t.id] = preset;
         });
 
@@ -75,16 +72,31 @@ const ThemeRating = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
     if (!projectId) {
       setError("No project selected. Please create or open a project first.");
       return;
     }
-
     try {
       setSaving(true);
-      // Backend accepts { weights: { "<theme_id>": number } }
       await api.saveProjectThemes(projectId, sliders);
+      navigate("/intervention-selection", { state: { projectId } });
+    } catch {
+      setError("Failed to save theme ratings. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleNoPreference = async () => {
+    setError("");
+    if (!projectId) {
+      setError("No project selected. Please create or open a project first.");
+      return;
+    }
+    try {
+      setSaving(true);
+      const allHundred = Object.fromEntries(themes.map((t) => [t.id, 100]));
+      await api.saveProjectThemes(projectId, allHundred);
       navigate("/intervention-selection", { state: { projectId } });
     } catch {
       setError("Failed to save theme ratings. Please try again.");
@@ -181,7 +193,9 @@ const ThemeRating = () => {
               Loading themes…
             </div>
           ) : themes.length === 0 ? (
-            <div style={{ color: "#fff", textAlign: "center", padding: 24 }}>No themes found.</div>
+            <div style={{ color: "#fff", textAlign: "center", padding: 24 }}>
+              No themes found.
+            </div>
           ) : (
             <form onSubmit={handleSubmit}>
               <div
@@ -221,10 +235,19 @@ const ThemeRating = () => {
                 )}
               </div>
 
-              <div style={{ marginBottom: "32px" }}>
+              {/* Scrollable theme list */}
+              <div
+                style={{
+                  marginBottom: "32px",
+                  maxHeight: isMobile ? "320px" : "420px",
+                  overflowY: "auto",
+                  paddingRight: "6px",
+                  scrollbarWidth: "thin",
+                }}
+              >
                 {themes.map((t, i) => {
                   const color = colorForIndex(i);
-                  const val = sliders[t.id] ?? 50;
+                  const val = sliders[t.id] ?? 0;
                   return (
                     <div
                       key={t.id}
@@ -338,7 +361,14 @@ const ThemeRating = () => {
                 })}
               </div>
 
-              <div style={{ textAlign: "center" }}>
+              <div
+                style={{
+                  textAlign: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                }}
+              >
                 <button
                   type="submit"
                   disabled={saving}
@@ -361,6 +391,26 @@ const ThemeRating = () => {
                 >
                   {saving ? "Saving…" : "SUBMIT"}
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleNoPreference}
+                  disabled={saving}
+                  style={{
+                    background: "rgba(255,255,255,0.15)",
+                    color: "#ffffff",
+                    padding: isMobile ? "12px 20px" : "14px 28px",
+                    borderRadius: "10px",
+                    border: "1px solid rgba(255,255,255,0.3)",
+                    fontFamily: "'Arquitecta', sans-serif",
+                    fontWeight: "900",
+                    cursor: saving ? "not-allowed" : "pointer",
+                    transition: "all 0.3s ease",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                  }}
+                >
+                  No preference (set all to 100%)
+                </button>
               </div>
             </form>
           )}
@@ -371,6 +421,9 @@ const ThemeRating = () => {
         {`
           input[type="range"]::-webkit-slider-thumb { appearance: none; width: 0; height: 0; }
           input[type="range"]::-moz-range-thumb { border: none; background: transparent; width: 0; height: 0; }
+          ::-webkit-scrollbar { width: 6px; }
+          ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+          ::-webkit-scrollbar-thumb:hover { background: rgba(50,195,226,0.6); }
         `}
       </style>
     </div>

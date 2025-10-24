@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+// src/pages/InterventionSelection.jsx
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { api } from "../api";
 
@@ -18,63 +19,109 @@ const InterventionSelection = () => {
     if (projectId) window.localStorage.setItem("currentProjectId", projectId);
   }, [projectId]);
 
-  const [recs, setRecs] = useState([]);                
-  const [selectedId, setSelectedId] = useState(null);  
+  const [recs, setRecs] = useState([]);
+  const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [applying, setApplying] = useState(false);
   const [themeToggle, setThemeToggle] = useState(true);
   const isMobile = typeof window !== "undefined" ? window.innerWidth <= 768 : false;
 
-  useEffect(() => {
+  const shapeToList = (data) => {
+    const arr = Array.isArray(data?.recommendations) ? data.recommendations
+              : Array.isArray(data) ? data
+              : [];
+    // ✅ FIXED: Sort by theme_weighted_effectiveness (what backend actually returns)
+    arr.sort(
+      (a, b) =>
+        (parseFloat(b.theme_weighted_effectiveness) || 0) -
+        (parseFloat(a.theme_weighted_effectiveness) || 0)
+    );
+    return arr;
+  };
+
+  const loadRecs = useCallback(async () => {
     if (!projectId) {
-      setLoading(false);
       setLoadError("Missing projectId.");
+      setRecs([]);
+      setLoading(false);
       return;
     }
-    let cancelled = false;
-
-    (async () => {
-      try {
-        setLoading(true);
-        setLoadError(null);
-
-        const res = await api.getRecommendations(projectId);
-        const list = Array.isArray(res?.recommendations) ? res.recommendations
-                    : Array.isArray(res) ? res
-                    : [];
-
-
-        list.sort((a, b) => (parseFloat(b.adjusted_base_effectiveness) || 0) - (parseFloat(a.adjusted_base_effectiveness) || 0));
-
-        if (!cancelled) {
-          setRecs(list);
-          setSelectedId(list.length ? list[0].intervention_id : null); 
-        }
-      } catch (err) {
-        if (!cancelled) setLoadError(err?.message || "Failed to load recommendations.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const data = await api.getRecommendations(projectId);
+      const list = shapeToList(data);
+      setRecs(list);
+      setSelected(new Set());
+    } catch (err) {
+      setLoadError(err?.message || "Failed to load recommendations.");
+      setRecs([]);
+    } finally {
+      setLoading(false);
+    }
   }, [projectId]);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      await loadRecs();
+      if (cancelled) return;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadRecs]);
+
+  const toggleSelect = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleApply = async (e) => {
     e.preventDefault();
-    if (!selectedId) {
-      alert("Please choose an intervention.");
+    if (selected.size === 0) {
+      alert("Please select at least one intervention.");
       return;
     }
-    const chosen = recs.find(r => r.intervention_id === selectedId) || null;
+    try {
+      setApplying(true);
+      const ids = Array.from(selected);
+      const response = await api.applyInterventionsBatch(projectId, ids);
 
-    navigate("/results", {
-      state: {
-        projectId,
-        selectedId, 
-        selectedItem: chosen, 
-      },
-    });
+      // ✅ Use next_recommendations from backend response
+      if (response.next_recommendations) {
+        setRecs(shapeToList({ recommendations: response.next_recommendations }));
+        setSelected(new Set());
+
+        if (response.applied_count > 0) {
+          alert(`Successfully applied ${response.applied_count} intervention${response.applied_count > 1 ? 's' : ''}!`);
+        }
+
+        // ✅ Auto-redirect if no more recommendations
+        if (!response.has_more || response.next_recommendations.length === 0) {
+          setTimeout(() => {
+            alert("All interventions applied! Redirecting to report...");
+            navigate("/results", { state: { projectId } });
+          }, 1000);
+        }
+      } else {
+        // Fallback: manually reload if backend didn't return next_recommendations
+        await loadRecs();
+      }
+    } catch (err) {
+      alert(`Failed to apply interventions: ${err?.message || err}`);
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const handleStop = () => {
+    navigate("/results", { state: { projectId } });
   };
 
   if (loading) {
@@ -120,7 +167,6 @@ const InterventionSelection = () => {
           border: '1px solid rgba(255,255,255,0.2)',
           margin: '0 auto'
         }}>
-          {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '20px' : '24px' }}>
             <h2 style={{
               fontSize: isMobile ? '22px' : '26px',
@@ -128,7 +174,7 @@ const InterventionSelection = () => {
               fontWeight: '900', color: '#ffffff', margin: 0,
               textShadow: '0 2px 8px rgba(0,0,0,0.5)'
             }}>
-              Choose a Recommended Intervention
+              Recommended Interventions
             </h2>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -159,7 +205,6 @@ const InterventionSelection = () => {
             </div>
           </div>
 
-          {/* Errors / empty state */}
           {loadError && (
             <div style={{ color: "#ffdede", marginBottom: 12, fontFamily: "'Arquitecta', sans-serif" }}>
               {loadError}
@@ -167,21 +212,21 @@ const InterventionSelection = () => {
           )}
           {(!recs || recs.length === 0) && !loadError && (
             <div style={{ color: "#fff", marginBottom: 24, fontFamily: "'Arquitecta', sans-serif" }}>
-              No recommendations available.
+              No more recommendations available. Click "Stop & View Report" to see your selections.
             </div>
           )}
 
-          {/* List (single-select radio) */}
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleApply}>
             <div style={{ marginBottom: "8px", color: "#fff", fontFamily: "'Arquitecta', sans-serif", opacity: 0.9 }}>
-              {recs?.length || 0} recommendation{(recs?.length || 0) === 1 ? "" : "s"}:
+              {(recs?.length || 0)} recommendation{(recs?.length || 0) === 1 ? "" : "s"} this round:
             </div>
 
             <div style={{ marginBottom: "24px" }}>
               {recs.map((r, idx) => {
                 const id = r.intervention_id;
-                const checked = selectedId === id;
-                const score = r.adjusted_base_effectiveness;
+                const checked = selected.has(id);
+                // ✅ FIXED: Use theme_weighted_effectiveness
+                const score = r.theme_weighted_effectiveness;
                 return (
                   <div
                     key={id}
@@ -196,29 +241,29 @@ const InterventionSelection = () => {
                       cursor: "pointer",
                       transition: "background 0.2s ease",
                     }}
-                    onClick={() => setSelectedId(id)}
+                    onClick={() => toggleSelect(id)}
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.12)")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)")}
                   >
-                    {/* Radio */}
                     <div
                       style={{
-                        width: 18, height: 18, borderRadius: "50%",
+                        width: 18, height: 18,
+                        borderRadius: 4,
                         border: "2px solid rgb(50,195,226)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        flexShrink: 0, marginTop: 2,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        marginTop: 2,
+                        background: checked ? "rgb(50,195,226)" : "transparent",
+                        transition: "background 0.2s ease",
                       }}
                     >
-                      <div
-                        style={{
-                          width: 10, height: 10, borderRadius: "50%",
-                          background: checked ? "rgb(50,195,226)" : "transparent",
-                          transition: "background 0.2s ease",
-                        }}
-                      />
+                      {checked && (
+                        <span style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}>✓</span>
+                      )}
                     </div>
 
-                    {/* Label + score */}
                     <div style={{ flex: 1 }}>
                       <div
                         style={{
@@ -239,7 +284,8 @@ const InterventionSelection = () => {
                             marginTop: 2,
                           }}
                         >
-                          Score: {score}
+                          {/* ✅ FIXED: Handle number formatting safely */}
+                          Score: {typeof score === 'number' ? score.toFixed(2) : score}
                         </div>
                       )}
                     </div>
@@ -248,34 +294,53 @@ const InterventionSelection = () => {
               })}
             </div>
 
-            {/* Submit */}
-            <div style={{ textAlign: "center" }}>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
               <button
                 type="submit"
+                disabled={applying || recs.length === 0 || selected.size === 0}
                 style={{
                   background: "linear-gradient(135deg, rgb(50,195,226) 0%, rgb(40,175,206) 100%)",
                   color: "white",
-                  padding: isMobile ? "14px 40px" : "16px 48px",
+                  padding: isMobile ? "14px 28px" : "16px 36px",
                   borderRadius: "12px",
                   border: "none",
                   fontSize: "16px",
                   fontFamily: "'Arquitecta', sans-serif",
                   fontWeight: "900",
-                  cursor: "pointer",
+                  cursor: (applying || recs.length === 0 || selected.size === 0) ? "not-allowed" : "pointer",
+                  opacity: applying ? 0.8 : 1,
                   letterSpacing: "0.5px",
-                  boxShadow: "0 8px 24px rgba(50, 195, 226, 0.4)",
+                  boxShadow: "0 8px 24px rgba(50,195,226,0.4)",
                   transition: "all 0.3s ease",
                 }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
-                  e.currentTarget.style.boxShadow = "0 12px 32px rgba(50,195,226,0.5)";
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.transform = "translateY(0) scale(1)";
-                  e.currentTarget.style.boxShadow = "0 8px 24px rgba(50,195,226,0.4)";
+                title={
+                  recs.length === 0 ? "No more interventions available" :
+                  selected.size === 0 ? "Select at least one intervention" :
+                  "Apply selected interventions"
+                }
+              >
+                {applying ? "Applying…" : `Apply Selected ${selected.size > 0 ? `(${selected.size})` : ''}`}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleStop}
+                style={{
+                  background: "#ffffff1a",
+                  color: "white",
+                  padding: isMobile ? "14px 28px" : "16px 36px",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(255,255,255,0.4)",
+                  fontSize: "16px",
+                  fontFamily: "'Arquitecta', sans-serif",
+                  fontWeight: "900",
+                  cursor: "pointer",
+                  letterSpacing: "0.5px",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+                  transition: "all 0.3s ease",
                 }}
               >
-                SUBMIT
+                Stop & View Report
               </button>
             </div>
           </form>
