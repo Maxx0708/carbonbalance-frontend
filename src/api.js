@@ -49,12 +49,11 @@ export const api = {
   // AUTH
   async login(email, password) {
     const out = await request("/auth/login", { method: "POST", body: { email, password } });
-    // Persist token AND user so pages can know current user id
     if (out?.access_token) {
       setToken(out.access_token);
-      setAuth(out);                     // <--- store {access_token, user}
+      setAuth(out);
     }
-    return out; // { access_token, user }
+    return out;
   },
 
   // ADMIN USERS
@@ -81,12 +80,10 @@ export const api = {
     return request(`/projects/${projectId}`, { method: "DELETE" });
   },
 
-  // List projects by explicit user id (backend route you already have)
   async listProjectsByUser(userId) {
     const data = await request(`/users/${userId}/projects`);
-    return data.projects; // array
+    return data.projects;
   },
-  // Convenience wrapper that uses the logged-in user
   async listMyProjects() {
     const uid = getUserId();
     if (!uid) throw new Error("no_user");
@@ -106,19 +103,42 @@ export const api = {
     return request(`/projects/${projectId}/themes${q}`, { method: "POST", body: { weights } });
   },
 
-  // METRICS & RECOs
+  // METRICS
   async sendBuildingMetrics(projectId, metrics, { dryRun = false } = {}) {
     const q = dryRun ? "?dry_run=1" : "";
-    // Your backend accepts {metrics:{...}} (and we kept that shape)
     return request(`/projects/${projectId}/metrics${q}`, { method: "POST", body: { metrics } });
   },
+
+  // INTERVENTIONS - Single (keep for backwards compat)
+  async applyIntervention(projectId, interventionId, { dryRun = false } = {}) {
+    const q = dryRun ? "?dry_run=1" : "";
+    return request(`/projects/${projectId}/apply${q}`, {
+      method: "POST",
+      body: { intervention_id: interventionId },
+    });
+  },
+
+  // INTERVENTIONS - Batch (NEW - use this for the loop!)
+  async applyInterventionsBatch(projectId, interventionIds, { dryRun = false } = {}) {
+    const q = dryRun ? "?dry_run=1" : "";
+    return request(`/projects/${projectId}/apply-batch${q}`, {
+      method: "POST",
+      body: { intervention_ids: interventionIds },
+    });
+  },
+
+  // RECOMMENDATIONS
   async getRecommendations(projectId) {
-    const res = await fetch(`/api/projects/${projectId}/recommendations`);
-    if (!res.ok) throw new Error(`Recommendations failed: ${res.status}`);
-    const data = await res.json();
-    return Array.isArray(data?.recommendations) ? data.recommendations : data;
+    const data = await request(`/projects/${projectId}/recommendations`);
+    return data.recommendations;
+  },
+
+  // IMPLEMENTED INTERVENTIONS (NEW - for report page)
+  async getImplementedInterventions(projectId) {
+    const data = await request(`/projects/${projectId}/implemented`);
+    return data; // { project_id, total_count, interventions: [...] }
   },
 };
 
-// hydrate in case token existed before refresh
+// hydrate token on load
 if (_token) setToken(_token);
