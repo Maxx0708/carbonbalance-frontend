@@ -31,7 +31,7 @@ const InterventionSelection = () => {
     const arr = Array.isArray(data?.recommendations) ? data.recommendations
               : Array.isArray(data) ? data
               : [];
-    // ✅ FIXED: Sort by theme_weighted_effectiveness (what backend actually returns)
+    //  FIXED: Sort by theme_weighted_effectiveness (what backend actually returns)
     arr.sort(
       (a, b) =>
         (parseFloat(b.theme_weighted_effectiveness) || 0) -
@@ -93,7 +93,7 @@ const InterventionSelection = () => {
       const ids = Array.from(selected);
       const response = await api.applyInterventionsBatch(projectId, ids);
 
-      // ✅ Use next_recommendations from backend response
+      //  Use next_recommendations from backend response
       if (response.next_recommendations) {
         setRecs(shapeToList({ recommendations: response.next_recommendations }));
         setSelected(new Set());
@@ -102,7 +102,7 @@ const InterventionSelection = () => {
           alert(`Successfully applied ${response.applied_count} intervention${response.applied_count > 1 ? 's' : ''}!`);
         }
 
-        // ✅ Auto-redirect if no more recommendations
+        //  Auto-redirect if no more recommendations
         if (!response.has_more || response.next_recommendations.length === 0) {
           setTimeout(() => {
             alert("All interventions applied! Redirecting to report...");
@@ -225,7 +225,7 @@ const InterventionSelection = () => {
               {recs.map((r, idx) => {
                 const id = r.intervention_id;
                 const checked = selected.has(id);
-                // ✅ FIXED: Use theme_weighted_effectiveness
+                //  FIXED: Use theme_weighted_effectiveness
                 const score = r.theme_weighted_effectiveness;
                 return (
                   <div
@@ -284,7 +284,7 @@ const InterventionSelection = () => {
                             marginTop: 2,
                           }}
                         >
-                          {/* ✅ FIXED: Handle number formatting safely */}
+                          {/*  FIXED: Handle number formatting safely */}
                           Score: {typeof score === 'number' ? score.toFixed(2) : score}
                         </div>
                       )}

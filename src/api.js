@@ -135,8 +135,12 @@ export const api = {
 
   // IMPLEMENTED INTERVENTIONS (NEW - for report page)
   async getImplementedInterventions(projectId) {
-    const data = await request(`/projects/${projectId}/implemented`);
-    return data; // { project_id, total_count, interventions: [...] }
+    const data = await request(`/projects/${projectId}/implemented-with-scores`);
+    return (
+      data?.implemented_interventions ||
+      data?.interventions ||
+      []
+    );
   },
 };
 

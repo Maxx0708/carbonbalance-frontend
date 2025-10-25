@@ -1,334 +1,401 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+// src/pages/ResultMatrix.jsx
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { api } from "../api";
 
 const ResultsMatrix = () => {
   const navigate = useNavigate();
-  const isMobile = window.innerWidth <= 768;
-  
-  // Sample intervention data for the matrix
-  const interventions = ['Intv A', 'Intv B', 'Intv C', 'Intv D', 'Intv E', 'Intv F', 'Intv G', 'Intv H'];
-  
-  // Sample dependency data (✓ = dependent, — = self)
-  const dependencies = {
-    'Intv A': { 'Intv A': 'self', 'Intv B': 'dependent', 'Intv C': null, 'Intv D': null, 'Intv E': null, 'Intv F': null, 'Intv G': null, 'Intv H': null },
-    'Intv B': { 'Intv A': null, 'Intv B': 'self', 'Intv C': 'dependent', 'Intv D': null, 'Intv E': null, 'Intv F': null, 'Intv G': null, 'Intv H': null },
-    'Intv C': { 'Intv A': null, 'Intv B': null, 'Intv C': 'self', 'Intv D': 'dependent', 'Intv E': null, 'Intv F': null, 'Intv G': null, 'Intv H': null },
-    'Intv D': { 'Intv A': null, 'Intv B': null, 'Intv C': null, 'Intv D': 'self', 'Intv E': null, 'Intv F': null, 'Intv G': null, 'Intv H': null }
+  const location = useLocation();
+
+  // Prefer router state; fallback to localStorage
+  const projectId =
+    location.state?.projectId ||
+    window.localStorage.getItem("currentProjectId") ||
+    null;
+
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [items, setItems] = useState([]); // [{intervention_id, name, score}]
+  const isMobile = useMemo(() => window.innerWidth <= 768, []);
+
+  // Build base URL for server-rendered assets
+  const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+  const graphSrc = projectId ? `${API_BASE}/projects/${projectId}/graph.svg` : "";
+  const htmlHref = projectId ? `${API_BASE}/projects/${projectId}/report.html` : "#";
+  const pdfHref  = projectId ? `${API_BASE}/projects/${projectId}/report.pdf`  : "#";
+
+  // Normalize any backend response shape into a clean array
+  const normalizeImplemented = (resp) => {
+    // resp may be:
+    //  - an array
+    //  - { implemented_interventions: [...] }
+    //  - { interventions: [...] }
+    const arr = Array.isArray(resp)
+      ? resp
+      : Array.isArray(resp?.implemented_interventions)
+      ? resp.implemented_interventions
+      : Array.isArray(resp?.interventions)
+      ? resp.interventions
+      : [];
+
+    // Make sure score is a number (or null)
+    return arr.map((x) => ({
+      intervention_id: x.intervention_id,
+      name: x.name,
+      score:
+        x.score == null || Number.isNaN(Number.parseFloat(x.score))
+          ? null
+          : Number.parseFloat(x.score),
+    }));
   };
 
-  const selectedInterventions = [
-    'Install Solar Panels',
-    'Low-flow water fixture'
-  ];
+  useEffect(() => {
+    let cancelled = false;
 
-  const handleDownloadReport = () => {
-    alert('Report generation initiated. A PDF report will be available for download.');
-  };
+    async function load() {
+      if (!projectId) {
+        setErr("No project selected.");
+        setLoading(false);
+        return;
+      }
+      try {
+        setErr("");
+        setLoading(true);
+        const resp = await api.getImplementedInterventions(projectId);
+        const list = normalizeImplemented(resp);
+
+        // Sort desc by score (nulls at the end)
+        list.sort(
+          (a, b) =>
+            (Number.isFinite(b.score) ? b.score : -Infinity) -
+            (Number.isFinite(a.score) ? a.score : -Infinity)
+        );
+
+        if (!cancelled) setItems(list);
+      } catch (e) {
+        if (!cancelled) setErr(e?.message || "Failed to load implemented interventions.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, [projectId]);
 
   const handleBackToProject = () => {
-    navigate('/dashboard');
+    navigate("/dashboard");
   };
-
-  const getCellContent = (row, col) => {
-    if (row === col) {
-      return '—'; // Self
-    }
-    const dep = dependencies[row] && dependencies[row][col];
-    if (dep === 'dependent') {
-      return '✓';
-    }
-    return '';
-  };
-
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundImage: `url('${process.env.PUBLIC_URL}/newdashbg.jpg')`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
-      display: 'flex',
-      flexDirection: 'column',
-      position: 'relative'
-    }}>
-      
-      {/* Subtle overlay for better form readability */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.05) 50%, rgba(255, 255, 255, 0.05) 100%)',
-        zIndex: 0
-      }} />
-      
-      {/* Main Content */}
-      <main style={{
-        flex: 1,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: isMobile ? '10px 16px' : '20px 40px', // Much reduced padding
-        position: 'relative',
-        zIndex: 1,
-        paddingTop: isMobile ? '80px' : '90px' // Reduced top padding
-      }}>
-        
-        {/* Main Content Card - Fixed height with internal scrolling */}
-        <div style={{
-          width: isMobile ? '100%' : '650px', // Back to better width
-          maxWidth: '650px',
-          height: isMobile ? 'calc(100vh - 180px)' : 'calc(100vh - 200px)', // Fixed height to fit viewport
-          backgroundColor: 'rgba(66, 86, 103, 0.7)',
-          borderRadius: '16px',
-          padding: isMobile ? '20px 16px' : '24px 28px',
-          boxShadow: '0 20px 60px rgba(66, 86, 103, 0.3)',
-          backdropFilter: 'blur(30px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          margin: '0 auto',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden' // Prevent container from scrolling
-        }}>
-          
-          {/* Header */}
-          <h2 style={{ 
-            fontSize: isMobile ? '20px' : '24px', // Back to readable size
-            fontFamily: "'Arquitecta', sans-serif",
-            fontWeight: '900',
-            marginBottom: '20px',
-            color: '#ffffff',
-            textAlign: 'center',
-            textShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
-            flexShrink: 0 // Don't shrink header
-          }}>
-            Intervention Dependency Matrix
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundImage: `url('${process.env.PUBLIC_URL}/newdashbg.jpg')`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "linear-gradient(135deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.05) 50%, rgba(255, 255, 255, 0.05) 100%)",
+          zIndex: 0,
+        }}
+      />
+
+      <main
+        style={{
+          flex: 1,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: isMobile ? "10px 16px" : "20px 40px",
+          position: "relative",
+          zIndex: 1,
+          paddingTop: isMobile ? "80px" : "90px",
+        }}
+      >
+        <div
+          style={{
+            width: isMobile ? "100%" : "750px",
+            maxWidth: "750px",
+            height: isMobile ? "calc(100vh - 180px)" : "calc(100vh - 200px)",
+            backgroundColor: "rgba(66, 86, 103, 0.7)",
+            borderRadius: "16px",
+            padding: isMobile ? "20px 16px" : "24px 28px",
+            boxShadow: "0 20px 60px rgba(66, 86, 103, 0.3)",
+            backdropFilter: "blur(30px)",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+            margin: "0 auto",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: isMobile ? "20px" : "24px",
+              fontFamily: "'Arquitecta', sans-serif",
+              fontWeight: "900",
+              marginBottom: "16px",
+              color: "#ffffff",
+              textAlign: "center",
+              textShadow: "0 2px 8px rgba(0, 0, 0, 0.5)",
+              flexShrink: 0,
+            }}
+          >
+            Report
           </h2>
 
-          {/* Scrollable Content Area */}
-          <div style={{
-            flex: 1,
-            overflowY: 'auto', // Allow scrolling in this container
-            overflowX: 'hidden',
-            paddingRight: '8px', // Space for scrollbar
-            marginRight: '-8px' // Offset padding
-          }}>
-            
-            {/* Matrix Table */}
-            <div style={{ 
-              marginBottom: '20px',
-              overflowX: 'auto'
-            }}>
-              <table style={{ 
-                borderCollapse: 'collapse', 
-                margin: '0 auto',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: '8px',
-                overflow: 'hidden',
-                width: '100%'
-              }}>
-                <thead>
-                  <tr>
-                    <th style={{ 
-                      width: '80px',
-                      padding: '8px',
-                      backgroundColor: 'rgba(50, 195, 226, 0.2)',
-                      border: '1px solid rgba(255, 255, 255, 0.2)',
-                      position: 'sticky',
-                      top: 0,
-                      zIndex: 1
-                    }}></th>
-                    {interventions.map((intv, index) => (
-                      <th key={index} style={{
-                        width: '40px',
-                        padding: '8px',
-                        fontSize: '11px',
-                        fontWeight: '600',
-                        color: '#ffffff',
-                        textAlign: 'center',
-                        backgroundColor: 'rgba(50, 195, 226, 0.2)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        fontFamily: "'Arquitecta', sans-serif",
-                        writingMode: 'vertical-rl',
-                        textOrientation: 'mixed',
-                        position: 'sticky',
-                        top: 0,
-                        zIndex: 1
-                      }}>
-                        {intv}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {interventions.map((rowIntv, rowIndex) => ( // Show all interventions now
-                    <tr key={rowIndex}>
-                      <td style={{
-                        padding: '8px',
-                        fontSize: '11px',
-                        fontWeight: '600',
-                        color: '#ffffff',
-                        textAlign: 'right',
-                        backgroundColor: 'rgba(50, 195, 226, 0.2)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        fontFamily: "'Arquitecta', sans-serif",
-                        position: 'sticky',
-                        left: 0,
-                        zIndex: 1
-                      }}>
-                        {rowIntv}
-                      </td>
-                      {interventions.map((colIntv, colIndex) => (
-                        <td key={colIndex} style={{
-                          width: '40px',
-                          height: '40px',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                          textAlign: 'center',
-                          verticalAlign: 'middle',
-                          fontSize: '14px',
-                          fontWeight: 'bold',
-                          backgroundColor: getCellContent(rowIntv, colIntv) === '—' ? 'rgba(255, 255, 255, 0.1)' : getCellContent(rowIntv, colIntv) === '✓' ? 'rgba(76, 175, 80, 0.2)' : 'transparent',
-                          color: getCellContent(rowIntv, colIntv) === '✓' ? '#4CAF50' : '#ffffff',
-                          fontFamily: "'Arquitecta', sans-serif"
-                        }}>
-                          {getCellContent(rowIntv, colIntv)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Legend */}
-            <div style={{
-              display: 'flex',
-              gap: '24px',
-              marginBottom: '20px',
-              fontSize: '14px',
-              color: '#ffffff',
-              justifyContent: 'center',
-              fontFamily: "'Arquitecta', sans-serif"
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ 
-                  color: '#4CAF50', 
-                  fontWeight: 'bold',
-                  fontSize: '16px'
-                }}>✓</span>
-                <span>Dependent</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ 
-                  fontWeight: 'bold',
-                  fontSize: '16px'
-                }}>—</span>
-                <span>Self</span>
-              </div>
-            </div>
-
-            {/* Selected Interventions Summary */}
-            <div style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              padding: '16px',
-              borderRadius: '8px',
-              marginBottom: '20px'
-            }}>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                marginBottom: '12px',
-                color: '#ffffff',
+          {/* Status / errors */}
+          {loading && (
+            <div
+              style={{
+                color: "#fff",
+                textAlign: "center",
+                padding: 16,
                 fontFamily: "'Arquitecta', sans-serif",
-                textShadow: '0 1px 3px rgba(0, 0, 0, 0.5)'
-              }}>
-                Selected Intervention
-              </h3>
-              
-              <div style={{ fontSize: '14px', color: '#ffffff', lineHeight: '1.6' }}>
-                {selectedInterventions.map((intervention, index) => (
-                  <div key={index} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginBottom: index < selectedInterventions.length - 1 ? '8px' : '0',
+              }}
+            >
+              Loading…
+            </div>
+          )}
+          {err && !loading && (
+            <div
+              style={{
+                background: "rgba(255, 92, 92, 0.2)",
+                border: "1px solid rgba(255, 92, 92, 0.5)",
+                color: "#fff",
+                padding: "10px 12px",
+                borderRadius: 8,
+                marginBottom: 12,
+                fontSize: 14,
+                fontFamily: "'Arquitecta', sans-serif",
+              }}
+            >
+              {err}
+            </div>
+          )}
+
+          {/* Scrollable content */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              overflowX: "hidden",
+              paddingRight: "8px",
+              marginRight: "-8px",
+            }}
+          >
+            {/* Graph */}
+            {projectId && (
+              <div
+                style={{
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 16,
+                }}
+              >
+                <div
+                  style={{
+                    color: "#fff",
                     fontFamily: "'Arquitecta', sans-serif",
-                    textShadow: '0 1px 3px rgba(0, 0, 0, 0.5)'
-                  }}>
-                    <span style={{ color: 'rgb(50, 195, 226)', fontWeight: 'bold' }}>→</span>
-                    <span>{intervention}</span>
-                  </div>
-                ))}
+                    fontWeight: 900,
+                    fontSize: 14,
+                    marginBottom: 8,
+                  }}
+                >
+                  Intervention Graph
+                </div>
+                <div
+                  style={{
+                    width: "100%",
+                    overflowX: "auto",
+                    background: "rgba(255,255,255,0.06)",
+                    borderRadius: 6,
+                    padding: 8,
+                  }}
+                >
+                  {/* SVG served by backend */}
+                  <img
+                    src={graphSrc}
+                    alt="Intervention Graph"
+                    style={{ width: "100%", height: "auto", display: "block" }}
+                    onError={(e) => {
+                      // Helpful fallback if Graphviz isn't available server-side
+                      e.currentTarget.style.display = "none";
+                      const m = document.createElement("div");
+                      m.style.color = "#fff";
+                      m.style.opacity = "0.9";
+                      m.style.fontFamily = "'Arquitecta', sans-serif";
+                      m.style.fontSize = "14px";
+                      m.innerText = "Graph unavailable (check Graphviz 'dot' on server).";
+                      e.currentTarget.parentNode.appendChild(m);
+                    }}
+                  />
+                </div>
               </div>
+            )}
+
+            {/* Implemented interventions */}
+            <div
+              style={{
+                backgroundColor: "rgba(255, 255, 255, 0.1)",
+                padding: "16px",
+                borderRadius: "8px",
+                marginBottom: "20px",
+              }}
+            >
+              <h3
+                style={{
+                  fontSize: "16px",
+                  fontWeight: "900",
+                  marginBottom: "12px",
+                  color: "#ffffff",
+                  fontFamily: "'Arquitecta', sans-serif",
+                  textShadow: "0 1px 3px rgba(0, 0, 0, 0.5)",
+                }}
+              >
+                Selected (Implemented) Interventions
+              </h3>
+
+              {(!items || items.length === 0) ? (
+                <div
+                  style={{
+                    color: "rgba(255,255,255,0.9)",
+                    fontFamily: "'Arquitecta', sans-serif",
+                    fontSize: 14,
+                  }}
+                >
+                  No interventions have been applied yet.
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {items.map((it) => (
+                    <div
+                      key={it.intervention_id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "10px 12px",
+                        background: "rgba(255,255,255,0.08)",
+                        borderRadius: 8,
+                      }}
+                    >
+                      <div
+                        style={{
+                          color: "#fff",
+                          fontFamily: "'Arquitecta', sans-serif",
+                          fontSize: 14,
+                          lineHeight: 1.4,
+                          paddingRight: 8,
+                        }}
+                      >
+                        {it.name || `Intervention #${it.intervention_id}`}
+                      </div>
+                      <div
+                        style={{
+                          color: "rgba(255,255,255,0.85)",
+                          fontFamily: "'Arquitecta', sans-serif",
+                          fontSize: 12,
+                        }}
+                      >
+                        {Number.isFinite(it.score)
+                          ? `Score: ${it.score.toFixed(2)}`
+                          : "Score: —"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Action Buttons - Fixed at bottom */}
-          <div style={{
-            display: 'flex',
-            gap: '16px',
-            justifyContent: 'center',
-            flexWrap: 'wrap',
-            paddingTop: '16px',
-            borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-            flexShrink: 0, // Don't shrink buttons
-            marginTop: 'auto' // Push to bottom
-          }}>
-            <button
-              onClick={handleDownloadReport}
+          {/* Actions */}
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+              justifyContent: "center",
+              flexWrap: "wrap",
+              paddingTop: "12px",
+              borderTop: "1px solid rgba(255, 255, 255, 0.2)",
+              flexShrink: 0,
+              marginTop: "auto",
+            }}
+          >
+            <a
+              href={htmlHref}
+              target="_blank"
+              rel="noreferrer"
               style={{
-                background: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)',
-                color: 'white',
-                padding: isMobile ? '12px 20px' : '14px 28px',
-                borderRadius: '8px',
-                border: 'none',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                minWidth: '140px',
+                background: "linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)",
+                color: "white",
+                padding: isMobile ? "12px 20px" : "14px 28px",
+                borderRadius: "8px",
+                border: "none",
+                fontSize: "14px",
+                fontWeight: "600",
+                cursor: "pointer",
+                minWidth: "160px",
                 fontFamily: "'Arquitecta', sans-serif",
-                letterSpacing: '0.5px',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)'
-              }}
-              onMouseOver={(e) => {
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 6px 16px rgba(76, 175, 80, 0.4)';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.3)';
+                letterSpacing: "0.5px",
+                textDecoration: "none",
+                textAlign: "center",
+                boxShadow: "0 4px 12px rgba(76, 175, 80, 0.3)",
               }}
             >
-              DOWNLOAD REPORT
-            </button>
-            
+              VIEW HTML REPORT
+            </a>
+
+            <a
+              href={pdfHref}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                background: "linear-gradient(135deg, #50aef5 0%, #2f86d6 100%)",
+                color: "white",
+                padding: isMobile ? "12px 20px" : "14px 28px",
+                borderRadius: "8px",
+                border: "none",
+                fontSize: "14px",
+                fontWeight: "600",
+                cursor: "pointer",
+                minWidth: "160px",
+                fontFamily: "'Arquitecta', sans-serif",
+                letterSpacing: "0.5px",
+                textDecoration: "none",
+                textAlign: "center",
+                boxShadow: "0 4px 12px rgba(80, 174, 245, 0.3)",
+              }}
+            >
+              DOWNLOAD PDF
+            </a>
+
             <button
               onClick={handleBackToProject}
               style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                color: '#ffffff',
-                padding: isMobile ? '12px 20px' : '14px 28px',
-                borderRadius: '8px',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                minWidth: '140px',
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+                color: "#ffffff",
+                padding: isMobile ? "12px 20px" : "14px 28px",
+                borderRadius: "8px",
+                border: "1px solid rgba(255, 255, 255, 0.3)",
+                fontSize: "14px",
+                fontWeight: "600",
+                cursor: "pointer",
+                minWidth: "160px",
                 fontFamily: "'Arquitecta', sans-serif",
-                letterSpacing: '0.5px',
-                transition: 'all 0.3s ease',
-                backdropFilter: 'blur(10px)'
-              }}
-              onMouseOver={(e) => {
-                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-                e.target.style.transform = 'translateY(-2px)';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-                e.target.style.transform = 'translateY(0)';
+                letterSpacing: "0.5px",
+                backdropFilter: "blur(10px)",
               }}
             >
               BACK TO PROJECT
